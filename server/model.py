@@ -15,7 +15,7 @@ import datetime as dt
 try:
     def model(input):
 
-        start = dt.datetime(2020, 1, 1)
+        start = dt.datetime(2021, 1, 1)
         end = dt.datetime.now()
 
         df = pdr.get_data_yahoo(input, start, end)
@@ -53,17 +53,22 @@ try:
 
         model = Sequential()
         model.add(LSTM(50, return_sequences=True, input_shape=(100, 1)))
-        model.add(LSTM(50, return_sequences=True))
-        model.add(LSTM(50))
+        model.add(LSTM(50, return_sequences=False))
+        model.add(Dense(25))
         model.add(Dense(1))
-        model.compile(loss='mean_squared_error', optimizer='adam')
-
-        model.fit(X_train, y_train, validation_data=(
-            X_test, ytest), epochs=10, batch_size=60, verbose=1)
+        model.compile(loss='mse', optimizer='adam')
+        model.fit(X_train, y_train,  epochs=100, batch_size=50,validation_split=0.2,verbose=0)
 
         # Lets Do the prediction and check performance metrics
         train_predict = model.predict(X_train)
         test_predict = model.predict(X_test)
+
+        #accuracy check
+        predictions = scaler.inverse_transform(test_predict)
+        rmse = np.sqrt(np.mean(predictions-ytest)**2)
+
+        print(rmse,"dasckhjaksbj")
+
 
         # Transformback to original form
         train_predict = scaler.inverse_transform(train_predict)
@@ -74,6 +79,7 @@ try:
         from sklearn.metrics import mean_squared_error
         math.sqrt(mean_squared_error(y_train, train_predict))
         math.sqrt(mean_squared_error(ytest, test_predict))
+
 
         start_point = len(test_data)-100
         x_input = test_data[start_point:].reshape(1, -1)
