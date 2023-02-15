@@ -10,7 +10,7 @@ import stcokImg from './media/stock.jpg'
 
 function App() {
     return (
-        <div className='App' style={{background:`${stcokImg}`,height:'100vh'}} >
+        <div className='App'  >
             <BrowserRouter>
                 <Routes>
                     <Route path='/' element={<Home />} />

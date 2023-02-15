@@ -4,13 +4,15 @@
 
 from dataclasses import dataclass
 from flask import Flask, jsonify, request
-import pandas_datareader as pdr
+from pandas_datareader import data as pdr
 import datetime as dt
-
+import yfinance as yfin
 import model
 from flask_cors import CORS
+import time
+import pandas as pd
 
-
+import datetime
 # Flask constructor takes the name of
 # current module (__name__) as argument.
 app = Flask(__name__)
@@ -26,23 +28,26 @@ CORS(app)
 # ‘/’ URL is bound with hello_world() function.
 def futuredata():
     userData = request.get_json()
-    print(userData['stock'])
-    return jsonify(model.model(userData['stock']))
+    return jsonify(model.model(userData['stockData']))
     # return jsonify(userData)
 
 
 @app.route('/originaldata', methods=['POST', "GET"])
 def originaldata():
+  
+
     userData = request.get_json()
-    print(userData)
     start = dt.datetime(2020, 1, 1)
     end = dt.datetime.now()
-    df = pdr.get_data_yahoo(userData['stock'], start, end)
+    yfin.pdr_override()
+    df = pdr.get_data_yahoo(userData['stock'], start,end )
     df1 = df.reset_index()['Close']
-    print(list(df1))
     df2 = list(df1)
 
     return jsonify({"data": df2})
+
+
+    
 
 
 # main driver function

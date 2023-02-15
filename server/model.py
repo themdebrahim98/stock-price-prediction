@@ -9,21 +9,25 @@ import tensorflow as tf
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-import pandas_datareader as pdr
+from pandas_datareader import data as pdr
 import datetime as dt
+import yfinance as yfin
 
 try:
-    def model(input):
+    def model(stockData):
 
-        start = dt.datetime(2021, 1, 1)
-        end = dt.datetime.now()
-
-        df = pdr.get_data_yahoo(input, start, end)
-        df.tail()
-        df1 = df.reset_index()['Close']
+        # start = dt.datetime(2021, 1, 1)
+        # end = dt.datetime.now()
+        # yfin.pdr_override()
+        # df = pdr.get_data_yahoo(input, start, end)
+        # df.tail()
+     
+        # df1 = df.reset_index()['Close']
+        # print(list(df1))
+        df1 = np.array(stockData)
         from sklearn.preprocessing import MinMaxScaler
         scaler = MinMaxScaler(feature_range=(0, 1))
-        df1 = scaler.fit_transform(np.array(df1).reshape(-1, 1))
+        df1 = scaler.fit_transform(df1.reshape(-1, 1))
         # splitting dataset into train and test split
         training_size = int(len(df1)*0.65)
         test_size = len(df1)-training_size
@@ -57,7 +61,7 @@ try:
         model.add(Dense(25))
         model.add(Dense(1))
         model.compile(loss='mse', optimizer='adam')
-        model.fit(X_train, y_train,  epochs=100, batch_size=50,validation_split=0.2,verbose=0)
+        model.fit(X_train, y_train,  epochs=100, batch_size=60,validation_split=0.2,verbose=0)
 
         # Lets Do the prediction and check performance metrics
         train_predict = model.predict(X_train)
@@ -95,25 +99,21 @@ try:
         while (i < 30):
 
             if (len(temp_input) > 100):
-                # print(temp_input)
+                
                 x_input = np.array(temp_input[1:])
-                print("{} day input {}".format(i, x_input))
+              
                 x_input = x_input.reshape(1, -1)
                 x_input = x_input.reshape((1, n_steps, 1))
-                # print(x_input)
+               
                 yhat = model.predict(x_input, verbose=0)
-                print("{} day output {}".format(i, yhat))
                 temp_input.extend(yhat[0].tolist())
                 temp_input = temp_input[1:]
-                # print(temp_input)
                 lst_output.extend(yhat.tolist())
                 i = i+1
             else:
                 x_input = x_input.reshape((1, n_steps, 1))
                 yhat = model.predict(x_input, verbose=0)
-                print(yhat[0])
                 temp_input.extend(yhat[0].tolist())
-                print(len(temp_input))
                 lst_output.extend(yhat.tolist())
                 i = i+1
 
@@ -126,7 +126,6 @@ try:
         df1 = scaler.inverse_transform(df1)
         df1 = list(df1.flatten())
 
-        print(df1)
 
         db = [
 
@@ -137,4 +136,4 @@ try:
         ]
         return db
 except:
-    pass
+    pass 
