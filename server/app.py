@@ -24,12 +24,13 @@ CORS(app)
 # the associated function.
 
 
-@app.route('/futuredata', methods=['POST'])
+@app.route('/futuredata', methods=['GET', 'POST'])
 # ‘/’ URL is bound with hello_world() function.
 def futuredata():
     userData = request.get_json()
-    return jsonify(model.model(userData['stockData']))
-    # return jsonify(userData)
+    data = model.model((userData['stock']))
+    
+    return jsonify(data)
 
 
 @app.route('/originaldata', methods=['POST', "GET"])
@@ -55,4 +56,4 @@ if __name__ == '__main__':
 
     # run() method of Flask class runs the application
     # on the local development server.
-    app.run(debug=True)
+    app.run(debug=True, port=5000)

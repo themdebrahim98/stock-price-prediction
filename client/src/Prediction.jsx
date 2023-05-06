@@ -59,25 +59,27 @@ export default function Prediction() {
     setstockCode((prev) => e.target.value);
   };
 
-  const fetchOriginlPrice = () => {};
+  const fetchOriginlPrice = () => { };
 
   const handleTraining = async () => {
-    if (originalClosingPrice.length > 0) {
-      setfututeData([]);
-      setpresstraining(true);
-      try {
-        let response = await axios.post("http://localhost:5000/futuredata", {
-          stockData: originalClosingPrice,
-        });
-        console.log(response.data);
+    setfututeData([]);
+    setpresstraining(true);
+    try {
+      let response = await axios.post("http://localhost:5000/futuredata", { stock: stockCode });
+      console.log(response.data);
+      if (response.data[0].predict_price.length <= 0) {
+        presstraining(false)
+        pressSearch(false)
+      } else {
+
         setfututeData(response.data[0].predict_price);
         setpresstraining(false);
-      } catch (error) {
-        alert("Something went wrong!!");
       }
-    } else {
-      alert("Plese fetch stock price  before training!");
+    } catch (error) {
+      console.log(error);
+
     }
+
   };
 
   const handleSubmit = async () => {
@@ -92,6 +94,11 @@ export default function Prediction() {
         });
 
         console.log(reponse.data);
+        if (reponse.data.data.length <= 0) {
+          alert("No Data Found! Please Search Again");
+          setpressSearch(false);
+          return;
+        }
         setoriginalClosingPrice((prev) => reponse.data.data);
         setpressSearch(false);
       } else {
@@ -126,9 +133,9 @@ export default function Prediction() {
 
             {pressSearch ? (
               <button class="btn btn-primary" type="button" disabled>
-              <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-              <span class="sr-only">Loading...</span>
-            </button>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span class="sr-only">Loading...</span>
+              </button>
             ) : (
               "  Search"
             )}
@@ -143,13 +150,13 @@ export default function Prediction() {
         >
 
           {
-            originalClosingPrice.length<=0 && pressSearch 
-            ? 
-            <button class="btn btn-primary" type="button" disabled>
-            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            <span class="sr-only">Loading...</span>
-          </button>
-            :null
+            originalClosingPrice.length <= 0 && pressSearch
+              ?
+              <button class="btn btn-primary" type="button" disabled>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span class="sr-only">Loading...</span>
+              </button>
+              : null
 
 
 
@@ -161,50 +168,51 @@ export default function Prediction() {
           )}
         </div>
 
-       
-        <div style={{marginTop:'45px'}}>
+
+        <div style={{ marginTop: '45px' }}>
           <h2>Predicted Price: </h2>
         </div>
 
-        
+
         <div
           className="futuredata  bg-secondary w-100   mt-5"
           style={{ height: "400px" }}
         >
           {fututeData.length <= 0 ? (
-            <button 
+            <button
+              disabled={originalClosingPrice.length <= 0}
               onClick={handleTraining}
-              style={{textAlign:'center', margin:'0 auto'}}
+              style={{ textAlign: 'center', margin: '0 auto' }}
               className="trainbutton btn bg-primary "
             >
-              {presstraining ? 
-              <button class="btn btn-primary" type="button" disabled>
-              <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-              <span class="sr-only">Loading...</span>
-            </button>
-               : 
+              {presstraining ?
+                <button class="btn btn-primary" type="button" disabled>
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span class="sr-only">Loading...</span>
+                </button>
+                :
                 <p >Train model</p>
               }
             </button>
           ) : null}
 
           {fututeData.length > 0 && (
-            <HighchartsReact   highcharts={Highcharts} options={options2} />
+            <HighchartsReact highcharts={Highcharts} options={options2} />
           )}
         </div>
 
         <div>
           <div className="result">
-            <h2>Towday's {stockCode} close price:  {originalClosingPrice[0] && originalClosingPrice[originalClosingPrice.length-1].toFixed(2)}</h2>
+            <h2>Towday's {stockCode} close price:  {originalClosingPrice[0] && originalClosingPrice[originalClosingPrice.length - 1].toFixed(2)}</h2>
             <h2>Tomorrow's {stockCode} close price will be : {fututeData[0] && fututeData[0].toFixed(2)}</h2>
-            <h2>Accuracy: {}</h2>
+            <h2>Accuracy: { }</h2>
 
 
-            
+
           </div>
         </div>
 
-       
+
       </div>
     </>
   );

@@ -1,139 +1,102 @@
-from xmlrpc.client import DateTime
-from numpy import array
-from sklearn.metrics import mean_squared_error
-import math
-from tensorflow.keras.layers import LSTM
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.models import Sequential
-import tensorflow as tf
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from pandas_datareader import data as pdr
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, Conv1D, MaxPooling1D, Flatten, Dropout
 import datetime as dt
 import yfinance as yfin
+from pandas_datareader import data as pdr
 
-try:
-    def model(stockData):
+def model(stock):
 
-        # start = dt.datetime(2021, 1, 1)
-        # end = dt.datetime.now()
-        # yfin.pdr_override()
-        # df = pdr.get_data_yahoo(input, start, end)
-        # df.tail()
-     
-        # df1 = df.reset_index()['Close']
-        # print(list(df1))
-        df1 = np.array(stockData)
-        from sklearn.preprocessing import MinMaxScaler
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        df1 = scaler.fit_transform(df1.reshape(-1, 1))
-        # splitting dataset into train and test split
-        training_size = int(len(df1)*0.65)
-        test_size = len(df1)-training_size
-        train_data, test_data = df1[0:training_size,
-                                    :], df1[training_size:len(df1), :1]
+    start = dt.datetime(2020, 1, 1)
+    end = dt.datetime.now()
+    yfin.pdr_override()
+    df = pdr.get_data_yahoo(stock, start,end )
+    data = df[['Close']]
+    # Normalize the data
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(data)
+    # Define the sequence length
+    sequence_length = 10
 
-        def create_dataset(dataset, time_step=1):
-            dataX, dataY = [], []
-            for i in range(len(dataset)-time_step-1):
-                a = dataset[i:(i+time_step), 0]  # i=0, 0,1,2,3-----99   100
-                dataX.append(a)
-                dataY.append(dataset[i + time_step, 0])
-            return np.array(dataX), np.array(dataY)
+    # Create sequences of data
+    X = []
+    y = []
+    for i in range(sequence_length, len(scaled_data)):
+        X.append(scaled_data[i-sequence_length:i, :])
+        y.append(scaled_data[i, 0])
 
-        # reshape into X=t,t+1,t+2,t+3 and Y=t+4
-        time_step = 100
-        X_train, y_train = create_dataset(train_data, time_step)
-        X_test, ytest = create_dataset(test_data, time_step)
-        # reshape input to be [samples, time steps, features] which is required for LSTM
-        X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
-        X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
+    # Convert the data to numpy arrays
+    X = np.array(X)
+    y = np.array(y)
+    # Split the data into training and testing sets
+    split_ratio = 0.8
+    train_size = int(split_ratio * len(X))
+    X_train = X[:train_size, :]
+    X_test = X[train_size:, :]
+    y_train = y[:train_size]
+    y_test = y[train_size:]
+    # Define the model architecture
+    model = Sequential()
+    model.add(Conv1D(filters=32, kernel_size=3, activation='relu', padding='same', input_shape=(X_train.shape[1], X_train.shape[2])))
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(Conv1D(filters=64, kernel_size=3, activation='relu', padding='same'))
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(Conv1D(filters=128, kernel_size=3, activation='relu', padding='same'))
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(LSTM(units=50, return_sequences=True))
+    model.add(Flatten())
+    model.add(Dense(50, activation='relu'))
+    model.add(Dense(1))
+    # Compile the model
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    # Train the model
+    model.fit(X_train, y_train, epochs=100, batch_size=32)
+    score = model.evaluate(X_test, y_test, batch_size=32)
+    y_pred = model.predict(X_test)
+    # Inverse transform the predictions and actual values
+    y_pred = scaler.inverse_transform(np.concatenate((y_pred, X_test[:, -1, 1:]), axis=1))[:, 0]
+    y_test = scaler.inverse_transform(np.concatenate((y_test.reshape(-1, 1), X_test[:, -1, 1:]), axis=1))[:, 0]
+    rmse = np.sqrt(np.mean((y_pred - y_test)**2))
+    print('Test RMSE:', rmse)
+    future_days = 30
 
-        # Create the Stacked LSTM model
-        from tensorflow.keras.models import Sequential
-        from tensorflow.keras.layers import Dense
-        from tensorflow.keras.layers import LSTM
+    # Initialize the last sequence with the last 10 days from the dataset
+    last_sequence = scaled_data[-sequence_length:, :].reshape((1, sequence_length, scaled_data.shape[1]))
+    last_sequence.shape
 
-        model = Sequential()
-        model.add(LSTM(50, return_sequences=True, input_shape=(100, 1)))
-        model.add(LSTM(50, return_sequences=False))
-        model.add(Dense(25))
-        model.add(Dense(1))
-        model.compile(loss='mse', optimizer='adam')
-        model.fit(X_train, y_train,  epochs=100, batch_size=60,validation_split=0.2,verbose=0)
-
-        # Lets Do the prediction and check performance metrics
-        train_predict = model.predict(X_train)
-        test_predict = model.predict(X_test)
-
-        #accuracy check
-        predictions = scaler.inverse_transform(test_predict)
-        rmse = np.sqrt(np.mean(predictions-ytest)**2)
-
-        print(rmse,"dasckhjaksbj")
-
-
-        # Transformback to original form
-        train_predict = scaler.inverse_transform(train_predict)
-        test_predict = scaler.inverse_transform(test_predict)
-
-        # Calculate RMSE performance metrics
-        import math
-        from sklearn.metrics import mean_squared_error
-        math.sqrt(mean_squared_error(y_train, train_predict))
-        math.sqrt(mean_squared_error(ytest, test_predict))
+    temp = np.array(last_sequence)
+    predicted_data = []
 
 
-        start_point = len(test_data)-100
-        x_input = test_data[start_point:].reshape(1, -1)
-        temp_input = list(x_input)
-        temp_input = temp_input[0].tolist()
-
-        # demonstrate prediction for next 10 days
-        from numpy import array
-
-        lst_output = []
-        n_steps = 100
-        i = 0
-        while (i < 30):
-
-            if (len(temp_input) > 100):
-                
-                x_input = np.array(temp_input[1:])
-              
-                x_input = x_input.reshape(1, -1)
-                x_input = x_input.reshape((1, n_steps, 1))
-               
-                yhat = model.predict(x_input, verbose=0)
-                temp_input.extend(yhat[0].tolist())
-                temp_input = temp_input[1:]
-                lst_output.extend(yhat.tolist())
-                i = i+1
-            else:
-                x_input = x_input.reshape((1, n_steps, 1))
-                yhat = model.predict(x_input, verbose=0)
-                temp_input.extend(yhat[0].tolist())
-                lst_output.extend(yhat.tolist())
-                i = i+1
-
-        day_new = np.arange(1, 101)  # last 100 day
-        day_pred = np.arange(101, 131)  # predict 30 day
-        prevStartPos = len(df1) - 100
-        lastPrev_100_data = scaler.inverse_transform(df1[prevStartPos:])
-        predict_30_day_data = scaler.inverse_transform(lst_output)
-        predict_30_day_data = list(predict_30_day_data.flatten())
-        df1 = scaler.inverse_transform(df1)
-        df1 = list(df1.flatten())
+    future_days = 10
+    for i in range(future_days):
+        next_price = np.array(model.predict(temp)[0])
+        next_price = np.expand_dims(next_price, axis=(0,2))
+        predicted_data.append(next_price[0][0])
+        temp = np.concatenate((temp, next_price), axis=1)
+        temp = np.delete(temp, 0, axis=1)
 
 
-        db = [
+    # Inverse transform the predicted prices
+    predicted = scaler.inverse_transform(np.array(predicted_data).reshape(-1, 1)).squeeze()
+    prediction_data = np.array(predicted)
+    
+    df1 = scaler.inverse_transform(data)
+    df1 = list(df1.flatten())
+    original_data =  np.array(data).flatten().tolist()
+    print(original_data, "ok")
 
-            {
-                "predict_price": predict_30_day_data,
-                "original_closing_price": df1
-            }
-        ]
-        return db
-except:
-    pass 
+
+
+
+
+    db = [
+
+        {
+            "predict_price": prediction_data.tolist(),
+            "original_closing_price":original_data
+        }
+    ]
+    return db
