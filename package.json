@@ -1,0 +1,14 @@
+{
+  "name": "stockprice",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "preinstall": "cd client &&  npm install  &&  cd ../",
+    "build": "cd client && npm run build && cd ../ "
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
